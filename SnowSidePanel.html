@@ -1009,14 +1009,12 @@
             }
 
             // Function to update the sidebar with information
-            function updateSidebar(clusterInfo) {
-                const sidebar = document.getElementById('sidebar');
-                sidebar.innerHTML = `
-    <h3>${clusterInfo.title}</h3>
-    <p>${clusterInfo.description}</p>
-    <!-- Add more HTML content based on your needs -->
-  `;
-            }
+            // Test updateSidebar function
+updateSidebar({
+  title: 'Test Title',
+  description: 'Test Description'
+});
+
 
 
             //Cluster Function
@@ -1042,8 +1040,15 @@
                     labelingInfo,
                     clusterMinSize
                 };
-
             }
+
+            [geojsonlayer, geojsonlayer2, geojsonlayer3, y2017_geojsonLayer, y2018_geojsonLayer, y2019_geojsonLayer, y2020_geojsonLayer, y2021_geojsonLayer, y2022_geojsonLayer, y2023_geojsonLayer, y2024_geojsonLayer, allyears_geojsonLayer, snow_geojsonLayer, ice_geojsonLayer, bridge_geojsonLayer, allcomp_geojsonLayer].forEach((layer) => {
+  layer.on('click', function (event) {
+    console.log('Cluster clicked:', event);
+    handleClusterClick(event, layer);
+  });
+});
+
             //------------------------------------------------Legend------------------------------------------------
             // Layer Group 1
             const groupLayer1 = new GroupLayer({
@@ -1206,6 +1211,8 @@
             // Add the widget to the top-right corner of the view
             view.ui.add(bgExpand, "top-left");
         });
+
+        
 
 
 </script>
