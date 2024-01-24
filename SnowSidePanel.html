@@ -108,7 +108,7 @@
         <h1>Snow Complaints(Side Panel)</h1>
     </header>
     <main id="map" role="main"></main>
-
+    
 </body>
 
 
@@ -133,7 +133,7 @@
         sidePanelDiv.id = "sidePanel";
         sidePanelDiv.className = "esri-widget"
 
-
+        
 
         let sliderDiv = document.createElement("div");
         sliderDiv.id = "sliderC";
@@ -463,7 +463,7 @@
             });
 
             //---------------For the years----------------------
-
+         
             const test_url = URL.createObjectURL(test_blob);
             const test2_url = URL.createObjectURL(test2_blob);
             const test3_url = URL.createObjectURL(test3_blob);
@@ -980,43 +980,6 @@
             map.addMany([bridge_geojsonLayer]);
             map.addMany([allcomp_geojsonLayer]);
 
-            // Add click event listener to GeoJSON layers
-            [geojsonlayer, geojsonlayer2, geojsonlayer3, y2017_geojsonLayer, y2018_geojsonLayer, y2019_geojsonLayer, y2020_geojsonLayer, y2021_geojsonLayer, y2022_geojsonLayer, y2023_geojsonLayer, y2024_geojsonLayer, allyears_geojsonLayer, snow_geojsonLayer, ice_geojsonLayer, bridge_geojsonLayer, allcomp_geojsonLayer].forEach((layer) => {
-                layer.on('click', function (event) {
-                    handleClusterClick(event, layer);
-                });
-            });
-
-            // Function to handle the click event on clusters
-            function handleClusterClick(event, layer) {
-                console.log('Cluster clicked:', event);
-
-                // Check if there are features in the clicked cluster
-                if (event.features && event.features.length > 0) {
-                    const clickedCluster = event.features[0];
-                    console.log('Clicked cluster properties:', clickedCluster.properties);
-
-                    const clusterInfo = {
-                        title: clickedCluster.getAttribute('title'), // Update with the correct attribute
-                        description: clickedCluster.getAttribute('description'), // Update with the correct attribute
-                        // Add more properties based on your GeoJSON data structure
-                    };
-
-                    console.log('Cluster info:', clusterInfo);
-
-                    updateSidebar(clusterInfo);
-                }
-            }
-
-            // Function to update the sidebar with information
-            // Test updateSidebar function
-updateSidebar({
-  title: 'Test Title',
-  description: 'Test Description'
-});
-
-
-
             //Cluster Function
             async function generateClusterConfig(layer) {
 
@@ -1040,15 +1003,8 @@ updateSidebar({
                     labelingInfo,
                     clusterMinSize
                 };
+
             }
-
-            [geojsonlayer, geojsonlayer2, geojsonlayer3, y2017_geojsonLayer, y2018_geojsonLayer, y2019_geojsonLayer, y2020_geojsonLayer, y2021_geojsonLayer, y2022_geojsonLayer, y2023_geojsonLayer, y2024_geojsonLayer, allyears_geojsonLayer, snow_geojsonLayer, ice_geojsonLayer, bridge_geojsonLayer, allcomp_geojsonLayer].forEach((layer) => {
-  layer.on('click', function (event) {
-    console.log('Cluster clicked:', event);
-    handleClusterClick(event, layer);
-  });
-});
-
             //------------------------------------------------Legend------------------------------------------------
             // Layer Group 1
             const groupLayer1 = new GroupLayer({
@@ -1211,8 +1167,6 @@ updateSidebar({
             // Add the widget to the top-right corner of the view
             view.ui.add(bgExpand, "top-left");
         });
-
-        
 
 
 </script>
