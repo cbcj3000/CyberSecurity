@@ -1,0 +1,1171 @@
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+    <title>Snow Complaints(Side Panel)</title>
+
+    <link rel="stylesheet" href="https://js.arcgis.com/4.26/esri/themes/light/main.css" />
+    <script src="https://js.arcgis.com/4.26/"></script>
+    <script src="BikeLanesSpring2022.js"></script>
+    <script src="SnowPlanLinesModifiedSpring2022.js"></script>
+    <script src="SnowPlanPointsSpring2022.js"></script>
+
+    <script src="bridge_condition_snow_on_overpass.js"></script>
+    <script src="snow_or_ice.js"></script>
+    <script src="snow.js"></script>
+    <script src="combined_data.js"></script>
+
+    <script src="y2017.js"></script>
+    <script src="y2018.js"></script>
+    <script src="y2019.js"></script>
+    <script src="y2020.js"></script>
+    <script src="y2021.js"></script>
+    <script src="y2022.js"></script>
+    <script src="y2023.js"></script>
+    <script src="y2024.js"></script>
+
+    <script src="snow_complaints_2017_to_present.js"></script>
+
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            width: 100%;
+            height: 60px;
+            background-color: SteelBlue;
+            box-shadow: -1px 11px 5px -2px rgba(0, 0, 0, 0.22);
+            z-index: 2;
+        }
+
+        h1 {
+            font-family: Arial, Helvetica, sans-serif;
+            color: #FFF;
+            margin-left: 16px;
+        }
+
+        h2 {
+            padding-left: .5%;
+            line-height: 1.2;
+
+        }
+
+        h3 {
+            padding-left: 1%;
+        }
+
+        h4 {
+            padding-left: 1%;
+        }
+
+        dl {
+            margin: -1em 1.5em 1.5em 1.5em;
+            line-height: 250%;
+        }
+
+        dt {
+            list-style-type: disc;
+            vertical-align: middle;
+        }
+
+        dd {
+            display: list-item;
+            list-style-type: disc;
+            margin-left: 50px;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 14px;
+            color: #323232;
+            z-index: 1;
+        }
+
+        #searchBar {
+            border-style: solid;
+            border-width: 4px;
+            border-radius: 6px;
+            border-color: gray;
+            box-shadow: -2px 2px black;
+        }
+    </style>
+</head>
+
+<body>
+    <header role="banner">
+        <h1>Snow Complaints(Side Panel)</h1>
+    </header>
+    <main id="map" role="main"></main>
+</body>
+
+
+<script>
+
+    function SidePanelFunc({
+        view,
+        searchWidget,
+        Feature,
+        layers,
+        promiseUtils,
+        sidePanelDefaultContent,
+    }) {
+        const graphic = {
+            popupTemplate: {
+                content: sidePanelDefaultContent
+            }
+        }
+
+        // create div for graphic
+        let sidePanelDiv = document.createElement("div");
+        sidePanelDiv.id = "sidePanel";
+        sidePanelDiv.className = "esri-widget"
+
+        let sliderDiv = document.createElement("div");
+        sliderDiv.id = "sliderC";
+        sliderDiv.style.background = "black"
+
+        // append div to main HTML container
+        const mainContainer = document.getElementById("map")
+        const firstChild = mainContainer.firstChild
+        if (firstChild) {
+            mainContainer.insertBefore(sidePanelDiv, firstChild)
+        } else {
+            mainContainer.appendChild(sidePanelDiv)
+        }
+
+        // Provide graphic to a new instance of a Feature widget
+        const feature = new Feature({
+            container: document.getElementById("sidePanel"),
+            graphic: graphic,
+            map: view.map, //????
+            spatialReference: view.spatialReference //????
+        });
+
+        //// SearchBar /////
+
+        // create div for searchBar
+        let searchBarDiv = document.createElement("div");
+        searchBarDiv.id = "searchBar";
+
+        // append div to sidePanelDiv
+        document.getElementById("sidePanel").appendChild(searchBarDiv)
+        // document.getElementById("sidePanel").appendChild(sliderDiv)
+
+        // set searchBarDiv as container of widget
+        // Position should be set as "manually" when adding the widget to view 
+        searchWidget.container = document.getElementById("searchBar")
+
+        // Add styles to HTML 
+        const styles = `
+    #sidePanel {
+      float: left;
+      width: 30%;
+      height: 100%;
+      padding: 1%;
+      overflow: scroll;
+      max-height: 100%;
+    }
+
+    #searchBar {
+      width: 100%
+    }
+  `
+        const styleSheet = document.createElement("style")
+        styleSheet.type = 'text/css'
+        styleSheet.innerText = styles
+        document.head.appendChild(styleSheet)
+
+        // Executes after selecting a search result
+        searchWidget.on("select-result", function (event) {
+            let highlight;
+            let objectId;
+
+            const searchResult = event.result.target;
+            feature.graphic = searchResult; // render results in sidepanel
+
+            // make visible searchResult's layer
+            const currentLayer = view.map.findLayerById(searchResult.sourceLayer.id)
+            currentLayer.visible = true;
+
+            const newObjectId = event.result.key;
+
+            if (!newObjectId) {
+                highlight ?.remove();
+                objectId = feature.graphic = {
+                    popupTemplate: {
+                        content: sidePanelDefaultContent
+                    }
+                };
+                searchWidget.clear(); // clear searchBar
+            } else if (objectId !== newObjectId) {
+                highlight ?.remove();
+                objectId = newObjectId;
+                feature.graphic = searchResultc;
+                highlight = currentLayer.highlight(searchResult);
+            }
+
+        });
+
+        //// Create LayerViews ////
+        const layersObjIdField = {}; // dict for every layer's objectIdField
+
+        layers.forEach((layer) => {
+            console.log(layer);
+            layersObjIdField[`${layer.id}`] = layer.objectIdField
+
+            view.whenLayerView(layer).then((layerView) => {
+                let highlight;
+                let objectId;
+
+                const debouncedUpdate = promiseUtils.debounce(async (event) => {
+                    searchWidget.clear(); // clear searchBar
+                    // Perform a hitTest on the View
+                    const hitTest = await view.hitTest(event);
+                    // Make sure graphic has a popupTemplate
+                    const results = hitTest.results.filter((result) => {
+                        return result.graphic.layer.popupTemplate;
+                    });
+
+                    const result = results[0];
+                    const newObjectId = result && result.graphic.attributes[layersObjIdField[result.layer.id]];
+                    if (!newObjectId) {
+                        highlight ?.remove();
+                        objectId = feature.graphic = {
+                            popupTemplate: {
+                                content: sidePanelDefaultContent
+                            }
+                        };
+                    } else if (objectId !== newObjectId) {
+                        highlight ?.remove();
+                        objectId = newObjectId;
+                        feature.graphic = result.graphic;
+                        highlight = layerView.highlight(result.graphic);
+                    }
+                });
+
+                // Listen for the pointer-move event on the View
+                view.on("click", (event) => {
+                    debouncedUpdate(event).catch((err) => {
+                        if (!promiseUtils.isAbortError(err)) {
+                            throw err;
+                        }
+                    });
+                });
+            });
+        });
+
+        // return({ feature, sidePanelDefaultContent })
+    }
+
+
+    require(
+        [
+            "esri/Basemap",
+            "esri/Map",
+            "esri/views/MapView",
+            "esri/widgets/BasemapToggle",
+            "esri/widgets/Search",
+            "esri/layers/FeatureLayer",
+            "esri/layers/GeoJSONLayer",
+            "esri/widgets/Legend",
+            "esri/widgets/LayerList",
+            "esri/layers/GroupLayer",
+            "esri/widgets/Expand",
+            "esri/widgets/FeatureTable",
+            "esri/widgets/TimeSlider",
+            "esri/widgets/Slider",
+            "esri/widgets/Feature",
+            "esri/layers/GraphicsLayer",
+            "esri/Graphic",
+            "esri/layers/support/Field",
+            "esri/widgets/BasemapGallery",
+            "esri/core/promiseUtils",
+            "esri/smartMapping/labels/clusters",
+            "esri/smartMapping/popup/clusters",
+            "esri/widgets/Popup"
+        ],
+        (
+            Basemap,
+            Map,
+            MapView,
+            BasemapToggle,
+            Search,
+            FeatureLayer,
+            GeoJSONLayer,
+            Legend,
+            LayerList,
+            GroupLayer,
+            Expand,
+            FeatureTable,
+            TimeSlider,
+            Slider,
+            Feature,
+            GraphicsLayer,
+            Graphic,
+            Field,
+            BasemapGallery,
+            promiseUtils,
+            clusterLabelCreator,
+            clusterPopupCreator,
+            Popup
+
+        ) => {
+
+            // Sticking the custom basemap into the map object ----------------------------------------------------------------------------------
+            const map = new Map({
+                basemap: "gray-vector", //list of base maps : https://developers.arcgis.com/javascript/latest/api-reference/esri-Map.html#properties-summary
+                spatialReference: {
+                    wkid: 4326
+                }
+            });
+
+            // 2. Adding the map object to the viewer ----------------------------------------------------------------------------------
+            const view = new MapView({
+                container: "map",
+                map: map,
+                center: [-73.977, 40.734],
+                zoom: 13,
+                popup: {
+                    autoOpenEnabled: false
+                }
+            });
+
+
+            view.when().then(() => {
+                // side panel: initial text ----------------------------------------------------------------------------------
+                const sidePanelDefaultContent = `
+                                        <b><h1 style="font-size: 35px;"> More Data Information </h1></b>
+                                        <p>
+                                            
+                                            Click any point or set of data on the map to display the information here. <br>
+                                            
+                                            <br>
+                                            Some information displayed: 
+                                            <dl>
+
+                                                <dd> Data  
+                                                <dd> More Data  
+                                                <dd> Even More Data
+                                                <dd> Wow there is so much Data
+                                            <dl>
+                                        </p>
+                                    `
+                // side panel: calls the layers so they could be displayed on the side panel -----------------------------------------------
+                const layers = [
+                    bikelanesspring22,
+                    snowplanmodspring22,
+                    snowplanpointsspring22,
+
+                    y17,
+                    y18,
+                    y19,
+                    y20,
+                    y21,
+                    y22,
+                    y23,
+                    y24,
+
+                    alldata,
+
+                    bridge,
+                    ice,
+                    snow,
+                    allcomp,
+                ]
+                SidePanelFunc({
+                    view,
+                    searchWidget,
+                    Feature,
+                    layers,
+                    promiseUtils,
+                    sidePanelDefaultContent
+                });
+
+            });
+
+            const test_blob = new Blob([JSON.stringify(bikelanesspring22)], {
+                type: "application/json"
+            });
+            //Second DataSet
+            const test2_blob = new Blob([JSON.stringify(snowplanpointsspring22)], {
+                type: "application/json"
+            });
+
+            const test3_blob = new Blob([JSON.stringify(snowplanmodspring22)], {
+                type: "application/json"
+            });
+
+            const y17_blob = new Blob([JSON.stringify(y17)], {
+                type: "application/json"
+            });
+
+            const y18_blob = new Blob([JSON.stringify(y18)], {
+                type: "application/json"
+            });
+
+            const y19_blob = new Blob([JSON.stringify(y19)], {
+                type: "application/json"
+            });
+
+            const y20_blob = new Blob([JSON.stringify(y20)], {
+                type: "application/json"
+            });
+
+            const y21_blob = new Blob([JSON.stringify(y21)], {
+                type: "application/json"
+            });
+
+            const y22_blob = new Blob([JSON.stringify(y22)], {
+                type: "application/json"
+            });
+
+            const y23_blob = new Blob([JSON.stringify(y23)], {
+                type: "application/json"
+            });
+
+            const y24_blob = new Blob([JSON.stringify(y24)], {
+                type: "application/json"
+            });
+
+            const ice_blob = new Blob([JSON.stringify(ice)], {
+                type: "application/json"
+            });
+
+            const bridge_blob = new Blob([JSON.stringify(bridge)], {
+                type: "application/json"
+            });
+
+            const snow_blob = new Blob([JSON.stringify(snow)], {
+                type: "application/json"
+            });
+
+            const alldata_blob = new Blob([JSON.stringify(alldata)], {
+                type: "application/json"
+            });
+
+            const allcomp_blob = new Blob([JSON.stringify(allcomp)], {
+                type: "application/json"
+            });
+
+            //---------------For the years----------------------
+         
+            const test_url = URL.createObjectURL(test_blob);
+            const test2_url = URL.createObjectURL(test2_blob);
+            const test3_url = URL.createObjectURL(test3_blob);
+            const y17_url = URL.createObjectURL(y17_blob);
+            const y18_url = URL.createObjectURL(y18_blob);
+            const y19_url = URL.createObjectURL(y19_blob);
+            const y20_url = URL.createObjectURL(y20_blob);
+            const y21_url = URL.createObjectURL(y21_blob);
+            const y22_url = URL.createObjectURL(y22_blob);
+            const y23_url = URL.createObjectURL(y23_blob);
+            const y24_url = URL.createObjectURL(y24_blob);
+            const alldata_url = URL.createObjectURL(alldata_blob);
+            const ice_url = URL.createObjectURL(ice_blob);
+            const snow_url = URL.createObjectURL(snow_blob);
+            const bridge_url = URL.createObjectURL(bridge_blob);
+            const allcomp_url = URL.createObjectURL(allcomp_blob);
+
+            //--------------------Look of Data/ Render----------------------
+            const test2_renderer = {
+                type: "simple",
+                symbol: {
+                    type: "simple-marker",
+                    color: "green",
+                    size: 7,
+                    outline: {
+                        color: "green"
+                    }
+                },
+                visible: false
+            };
+
+            const test_renderer = {
+                type: "simple",
+                symbol: {
+                    type: "simple-line",
+                    color: "purple",
+                    width: 2,
+                    outline: {
+                        width: 2,
+                        color: "purple"
+                    }
+                },
+                visible: false
+            };
+
+            const test3_renderer = {
+                type: "simple",
+                symbol: {
+                    type: "simple-line",
+                    color: "OrangeRed",
+                    width: 2,
+                    outline: {
+                        width: 2,
+                        color: "OrangeRed"
+                    }
+                },
+                visible: false
+            };
+
+            //---------Cluster Renderings----------------
+            const y2017_clusterRenderer = {
+                type: "simple",
+                symbol: {
+                    type: "simple-marker",
+                    color: "BlueViolet",
+                    size: 12,  // Experiment with different sizes
+                    outline: {
+                        width: 1,
+                        color: "white"
+                    }
+                },
+            };
+
+            const y2018_clusterRenderer = {
+                type: "simple",
+                symbol: {
+                    type: "simple-marker",
+                    color: "DarkMagenta",
+                    size: 12,  // Experiment with different sizes
+                    outline: {
+                        width: 1,
+                        color: "white"
+                    }
+                },
+            };
+
+            const y2019_clusterRenderer = {
+                type: "simple",
+                symbol: {
+                    type: "simple-marker",
+                    color: "DarkOrchid",
+                    size: 12,  // Experiment with different sizes
+                    outline: {
+                        width: 1,
+                        color: "white"
+                    }
+                },
+            };
+
+            const y2020_clusterRenderer = {
+                type: "simple",
+                symbol: {
+                    type: "simple-marker",
+                    color: "DarkViolet",
+                    size: 12,  // Experiment with different sizes
+                    outline: {
+                        width: 1,
+                        color: "white"
+                    }
+                },
+            };
+
+            const y2021_clusterRenderer = {
+                type: "simple",
+                symbol: {
+                    type: "simple-marker",
+                    color: "purple",
+                    size: 12,  // Experiment with different sizes
+                    outline: {
+                        width: 1,
+                        color: "white"
+                    }
+                },
+            };
+
+            const y2022_clusterRenderer = {
+                type: "simple",
+                symbol: {
+                    type: "simple-marker",
+                    color: "Plum",
+                    size: 12,  // Experiment with different sizes
+                    outline: {
+                        width: 1,
+                        color: "white"
+                    }
+                },
+            };
+
+            const y2023_clusterRenderer = {
+                type: "simple",
+                symbol: {
+                    type: "simple-marker",
+                    color: "RebeccaPurple",
+                    size: 12,  // Experiment with different sizes
+                    outline: {
+                        width: 1,
+                        color: "white"
+                    }
+                },
+            };
+
+            const y2024_clusterRenderer = {
+                type: "simple",
+                symbol: {
+                    type: "simple-marker",
+                    color: "Orchid",
+                    size: 12,  // Experiment with different sizes
+                    outline: {
+                        width: 1,
+                        color: "white"
+                    }
+                },
+            };
+
+            const allyears_clusterRenderer = {
+                type: "simple",
+                symbol: {
+                    type: "simple-marker",
+                    color: "LightSkyBlue",
+                    size: 12,  // Experiment with different sizes
+                    outline: {
+                        width: 1,
+                        color: "white"
+                    }
+                },
+            };
+
+            const snow_clusterRenderer = {
+                type: "simple",
+                symbol: {
+                    type: "simple-marker",
+                    color: "DarkRed",
+                    size: 12,  // Experiment with different sizes
+                    outline: {
+                        width: 1,
+                        color: "white"
+                    }
+                },
+            };
+
+            const ice_clusterRenderer = {
+                type: "simple",
+                symbol: {
+                    type: "simple-marker",
+                    color: "IndianRed",
+                    size: 12,  // Experiment with different sizes
+                    outline: {
+                        width: 1,
+                        color: "white"
+                    }
+                },
+            };
+
+            const bridge_clusterRenderer = {
+                type: "simple",
+                symbol: {
+                    type: "simple-marker",
+                    color: "Crimson",
+                    size: 12,  // Experiment with different sizes
+                    outline: {
+                        width: 1,
+                        color: "white"
+                    }
+                },
+            };
+
+            const allcomp_clusterRenderer = {
+                type: "simple",
+                symbol: {
+                    type: "simple-marker",
+                    color: "red",
+                    size: 12,  // Experiment with different sizes
+                    outline: {
+                        width: 1,
+                        color: "white"
+                    }
+                },
+            };
+
+            //-------------------------------GeoJson Layers-------------------------------
+
+            const geojsonlayer = new GeoJSONLayer({
+                //url: You can also use a link to the data (http...)
+                url: test_url,
+                title: "Snow Plan Bike Lanes",
+                id: "geojsonlayer",
+                renderer: test_renderer,
+                visible: true
+            });
+
+
+            const geojsonlayer2 = new GeoJSONLayer({
+                //url: You can also use a link to the data (http...)
+                url: test2_url,
+                title: "Snow Plan Intersections",
+                id: "geojsonlayer2",
+                renderer: test2_renderer,
+                visible: true
+            });
+
+            const geojsonlayer3 = new GeoJSONLayer({
+                //url: You can also use a link to the data (http...)
+                url: test3_url,
+                title: "Snow Plan Roadways",
+                id: "geojsonlayer3",
+                renderer: test3_renderer,
+                visible: true
+            });
+
+            //---------------------------Cluster Titles------------------------------
+            const y2017_geojsonLayer = new GeoJSONLayer({
+                id: "y2017_geojsonLayer2",
+                title: "Year 2017 Clustering",
+                url: y17_url,
+                renderer: y2017_clusterRenderer,
+                visible: true
+            });
+
+            y2017_geojsonLayer
+                .when()
+                .then(generateClusterConfig)
+                .then((featureReduction) => {
+                    // sets generated cluster configuration on the layer
+                    y2017_geojsonLayer.featureReduction = featureReduction;
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+
+            const y2018_geojsonLayer = new GeoJSONLayer({
+                id: "y2018_geojsonLayer2",
+                title: "Year 2018 Clustering",
+                url: y18_url,
+                renderer: y2018_clusterRenderer,
+            });
+
+            y2018_geojsonLayer
+                .when()
+                .then(generateClusterConfig)
+                .then((featureReduction) => {
+                    // sets generated cluster configuration on the layer
+                    y2018_geojsonLayer.featureReduction = featureReduction;
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+
+            const y2019_geojsonLayer = new GeoJSONLayer({
+                id: "y2019_geojsonLayer2",
+                title: "Year 2019 Clustering",
+                url: y19_url,
+                renderer: y2019_clusterRenderer,
+            });
+
+            y2019_geojsonLayer
+                .when()
+                .then(generateClusterConfig)
+                .then((featureReduction) => {
+                    // sets generated cluster configuration on the layer
+                    y2019_geojsonLayer.featureReduction = featureReduction;
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+
+            const y2020_geojsonLayer = new GeoJSONLayer({
+                id: "y2020_geojsonLayer2",
+                title: "Year 2020 Clustering",
+                url: y20_url,
+                renderer: y2020_clusterRenderer,
+            });
+
+            y2020_geojsonLayer
+                .when()
+                .then(generateClusterConfig)
+                .then((featureReduction) => {
+                    // sets generated cluster configuration on the layer
+                    y2020_geojsonLayer.featureReduction = featureReduction;
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+
+            const y2021_geojsonLayer = new GeoJSONLayer({
+                id: "y2021_geojsonLayer2",
+                title: "Year 2021 Clustering",
+                url: y21_url,
+                renderer: y2021_clusterRenderer,
+            });
+
+            y2021_geojsonLayer
+                .when()
+                .then(generateClusterConfig)
+                .then((featureReduction) => {
+                    // sets generated cluster configuration on the layer
+                    y2021_geojsonLayer.featureReduction = featureReduction;
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+
+            const y2022_geojsonLayer = new GeoJSONLayer({
+                id: "y2022_geojsonLayer2",
+                title: "Year 2022 Clustering",
+                url: y22_url,
+                renderer: y2022_clusterRenderer,
+            });
+
+            y2022_geojsonLayer
+                .when()
+                .then(generateClusterConfig)
+                .then((featureReduction) => {
+                    // sets generated cluster configuration on the layer
+                    y2022_geojsonLayer.featureReduction = featureReduction;
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+
+            const y2023_geojsonLayer = new GeoJSONLayer({
+                id: "y2023_geojsonLayer2",
+                title: "Year 2023 Clustering",
+                url: y23_url,
+                renderer: y2023_clusterRenderer,
+            });
+
+            y2023_geojsonLayer
+                .when()
+                .then(generateClusterConfig)
+                .then((featureReduction) => {
+                    // sets generated cluster configuration on the layer
+                    y2023_geojsonLayer.featureReduction = featureReduction;
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+
+            const y2024_geojsonLayer = new GeoJSONLayer({
+                id: "y2024_geojsonLayer2",
+                title: "Year 2024 Clustering",
+                url: y24_url,
+                renderer: y2024_clusterRenderer,
+            });
+
+            y2024_geojsonLayer
+                .when()
+                .then(generateClusterConfig)
+                .then((featureReduction) => {
+                    // sets generated cluster configuration on the layer
+                    y2024_geojsonLayer.featureReduction = featureReduction;
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+
+            const allyears_geojsonLayer = new GeoJSONLayer({
+                id: "allyears_geojsonLayer2",
+                title: "311 All Years (2017-2023) Clustered",
+                url: alldata_url,
+                renderer: allyears_clusterRenderer,
+            });
+
+            allyears_geojsonLayer
+                .when()
+                .then(generateClusterConfig)
+                .then((featureReduction) => {
+                    // sets generated cluster configuration on the layer
+                    allyears_geojsonLayer.featureReduction = featureReduction;
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+
+            //Complaints
+            const snow_geojsonLayer = new GeoJSONLayer({
+                id: "snow_geojsonLayer2",
+                title: "Snow Complaints Clustering",
+                url: snow_url,
+                renderer: snow_clusterRenderer,
+            });
+
+            snow_geojsonLayer
+                .when()
+                .then(generateClusterConfig)
+                .then((featureReduction) => {
+                    // sets generated cluster configuration on the layer
+                    snow_geojsonLayer.featureReduction = featureReduction;
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+
+            const ice_geojsonLayer = new GeoJSONLayer({
+                id: "ice_geojsonLayer2",
+                title: "Snow or Ice Complaints Clustering",
+                url: ice_url,
+                renderer: ice_clusterRenderer,
+            });
+
+            ice_geojsonLayer
+                .when()
+                .then(generateClusterConfig)
+                .then((featureReduction) => {
+                    // sets generated cluster configuration on the layer
+                    ice_geojsonLayer.featureReduction = featureReduction;
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+
+            const bridge_geojsonLayer = new GeoJSONLayer({
+                id: "bridge_geojsonLayer2",
+                title: " Complaint Type is 'Bridge Condition' and Descriptor is 'Snow on Overpass' Clustering",
+                url: bridge_url,
+                visible: false,
+                renderer: bridge_clusterRenderer,
+            });
+
+            bridge_geojsonLayer
+                .when()
+                .then(generateClusterConfig)
+                .then((featureReduction) => {
+                    // sets generated cluster configuration on the layer
+                    bridge_geojsonLayer.featureReduction = featureReduction;
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+
+            const allcomp_geojsonLayer = new GeoJSONLayer({
+                id: "allcomp_geojsonLayer2",
+                title: "All Complaint Types Clustered",
+                url: allcomp_url,
+                visible: true,
+                renderer: allcomp_clusterRenderer,
+            });
+
+            allcomp_geojsonLayer
+                .when()
+                .then(generateClusterConfig)
+                .then((featureReduction) => {
+                    // sets generated cluster configuration on the layer
+                    allcomp_geojsonLayer.featureReduction = featureReduction;
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+
+            //-----------------------------Add Data to Map------------------------------------
+            map.addMany([geojsonlayer]);
+            map.addMany([geojsonlayer2]);
+            map.addMany([geojsonlayer3]);
+            map.addMany([y2017_geojsonLayer]);
+            map.addMany([y2018_geojsonLayer]);
+            map.addMany([y2019_geojsonLayer]);
+            map.addMany([y2020_geojsonLayer]);
+            map.addMany([y2021_geojsonLayer]);
+            map.addMany([y2022_geojsonLayer]);
+            map.addMany([y2023_geojsonLayer]);
+            map.addMany([y2024_geojsonLayer]);
+            map.addMany([allyears_geojsonLayer]);
+            map.addMany([snow_geojsonLayer]);
+            map.addMany([ice_geojsonLayer]);
+            map.addMany([bridge_geojsonLayer]);
+            map.addMany([allcomp_geojsonLayer]);
+
+            //Cluster Function
+            async function generateClusterConfig(layer) {
+
+                // generates default popupTemplate
+                const popupTemplate = await clusterPopupCreator
+                    .getTemplates({ layer })
+                    .then((popupTemplateResponse) => popupTemplateResponse.primaryTemplate.value);
+
+                // generates default labelingInfo
+                const { labelingInfo, clusterMinSize } = await clusterLabelCreator
+                    .getLabelSchemes({
+                        layer,
+                        view
+                    })
+                    .then((labelSchemes) => labelSchemes.primaryScheme);
+
+                // Set this object on layer.featureReduction
+                return {
+                    type: "cluster",
+                    popupTemplate,
+                    labelingInfo,
+                    clusterMinSize
+                };
+
+            }
+            //------------------------------------------------Legend------------------------------------------------
+            // Layer Group 1
+            const groupLayer1 = new GroupLayer({
+                title: "Snow Plan",
+                visible: false,
+                visibilityMode: "independent", // Individual layers within the group can be toggled independently
+                layers: [geojsonlayer, geojsonlayer2, geojsonlayer3], // Add the layers you want in this group
+                opacity: 0.75
+            });
+
+            // Add group layer to the map
+            map.add(groupLayer1);
+
+            // Create LayerList widget for group layers
+            const layerList1 = new LayerList({
+                view: view
+            });
+
+            const layerListExpand1 = new Expand({
+                view: view,
+                content: layerList1,
+                expandTooltip: 'Add Layers to Map'
+            });
+
+            view.ui.add(layerListExpand1, {
+                position: 'top-left'
+            });
+
+            // // Layer Group 2
+            // const groupLayer2 = new GroupLayer({
+            //     title: "311 Years Points",
+            //     visible: false,
+            //     visibilityMode: "independent", // Individual layers within the group can be toggled independently
+            //     layers: [apiGeoJSONLayer1, apiGeoJSONLayer2, apiGeoJSONLayer3, apiGeoJSONLayer4, apiGeoJSONLayer5, apiGeoJSONLayer6, apiGeoJSONLayer7],
+            //     opacity: 0.75
+            // });
+
+            // // Add group layer to the map
+            // map.add(groupLayer2);
+
+            // // Create LayerList widget for group layers
+            // const layerList2 = new LayerList({
+            //     view: view
+            // });
+
+            // const layerListExpand2 = new Expand({
+            //     view: view,
+            //     content: layerList2,
+            //     expandTooltip: 'Add Layers to Map'
+            // });
+
+            // Layer Group 3
+            const groupLayer3 = new GroupLayer({
+                title: "311 Years Clustered",
+                visible: false,
+                visibilityMode: "independent", // Individual layers within the group can be toggled independently
+                layers: [y2017_geojsonLayer, y2018_geojsonLayer, y2019_geojsonLayer, y2020_geojsonLayer, y2021_geojsonLayer, y2022_geojsonLayer, y2023_geojsonLayer, y2024_geojsonLayer],
+                opacity: 0.75
+            });
+
+            // Add group layer to the map
+            map.add(groupLayer3);
+
+            // Create LayerList widget for group layers
+            const layerList3 = new LayerList({
+                view: view
+            });
+
+            const layerListExpand3 = new Expand({
+                view: view,
+                content: layerList3,
+                expandTooltip: 'Add Layers to Map'
+            });
+
+            // Layer Group 4
+            const groupLayer4 = new GroupLayer({
+                title: "Snow Complaints",
+                visible: false,
+                visibilityMode: "independent", // Individual layers within the group can be toggled independently
+                layers: [snow_geojsonLayer, ice_geojsonLayer,],
+                opacity: 0.75
+            });
+
+            // Add group layer to the map
+            map.add(groupLayer4);
+
+            // Create LayerList widget for group layers
+            const layerList4 = new LayerList({
+                view: view
+            });
+
+            const layerListExpand4 = new Expand({
+                view: view,
+                content: layerList4,
+                expandTooltip: 'Add Layers to Map'
+            });
+
+            // Layer Group 5
+            const groupLayer5 = new GroupLayer({
+                title: "Complaints",
+                visible: false,
+                visibilityMode: "independent", // Individual layers within the group can be toggled independently
+                layers: [groupLayer4, bridge_geojsonLayer, allcomp_geojsonLayer],
+                opacity: 0.75
+            });
+
+            // Add group layer to the map
+            map.add(groupLayer5);
+
+            // Create LayerList widget for group layers
+            const layerList5 = new LayerList({
+                view: view
+            });
+
+            const layerListExpand5 = new Expand({
+                view: view,
+                content: layerList5,
+                expandTooltip: 'Add Layers to Map'
+            });
+
+            // Layer Group 6
+            const groupLayer6 = new GroupLayer({
+                title: "311",
+                visible: true,
+                visibilityMode: "independent", // Individual layers within the group can be toggled independently
+                layers: [groupLayer3, allyears_geojsonLayer],
+                opacity: 0.75
+            });
+
+            // Add group layer to the map
+            map.add(groupLayer6);
+
+            // Create LayerList widget for group layers
+            const layerList6 = new LayerList({
+                view: view
+            });
+
+            const layerListExpand6 = new Expand({
+                view: view,
+                content: layerList6,
+                expandTooltip: 'Add Layers to Map'
+            });
+            // Adding a search input ----------------------------------------------------------------------------------
+            const searchWidget = new Search({
+                view: view,
+            });
+            view.ui.add(searchWidget, { position: "manually", }); // changed to manually
+
+            // Add basemap gallery ----------------------------------------------------------------------------------
+            const basemapGallery = new BasemapGallery({
+                container: document.createElement("div"),
+                view: view
+            });
+            bgExpand = new Expand({
+                expandIconClass: "esri-icon-basemap",
+                view: view,
+                content: basemapGallery,
+                expandTooltip: "Change Basemap"
+            })
+            // Add the widget to the top-right corner of the view
+            view.ui.add(bgExpand, "top-left");
+        });
+
+
+</script>
+
+</html>
